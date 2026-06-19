@@ -35,6 +35,11 @@ export const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 
+  // ── Cloudinary (media storage) ──
+  CLOUDINARY_CLOUD_NAME: z.string().optional(),
+  CLOUDINARY_API_KEY: z.string().optional(),
+  CLOUDINARY_API_SECRET: z.string().optional(),
+
   // ── Google OAuth (ixtiyoriy — sozlanmasa /auth/google o'chiq) ──
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

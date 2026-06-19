@@ -1,18 +1,16 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { promises as fs } from 'fs';
-import * as path from 'path';
+import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Env } from '../../config/env.validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityService } from '../visibility/visibility.service';
 
-/** `GET /media/:id` uchun stream qilinadigan fayl ma'lumoti. */
+/** `GET /media/:id` uchun Cloudinary URL ma'lumoti. */
 export interface ServableMedia {
-  absPath: string;
+  url: string;
   mimeType: string;
-  sizeBytes: number;
 }
 
 export type ImageExt = 'jpg' | 'png' | 'webp';
@@ -39,23 +37,32 @@ const EXT_MIME: Record<ImageExt | VideoExt, string> = {
   mov: 'video/quicktime',
 };
 
-/**
- * Media fayllarni validatsiya/saqlash. M2'da faqat avatar (image) ishlatiladi;
- * M3'da post media (video + serving + cleanup) shu yerga qo'shiladi. `process()`
- * hook hozircha no-op (kelajakda siqish/transcoding).
- */
+const CLOUD_FOLDER = 'instagram-clone';
+
 @Injectable()
-export class MediaService {
+export class MediaService implements OnModuleInit {
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly prisma: PrismaService,
     private readonly visibility: VisibilityService,
   ) {}
 
+  onModuleInit(): void {
+    const cloudName = this.config.get('CLOUDINARY_CLOUD_NAME', { infer: true });
+    if (cloudName) {
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: this.config.get('CLOUDINARY_API_KEY', { infer: true }),
+        api_secret: this.config.get('CLOUDINARY_API_SECRET', { infer: true }),
+        secure: true,
+      });
+    }
+  }
+
   /**
    * `GET /media/:id` uchun: media + post + egasini yuklaydi va viewer ko'ra
    * oladimi tekshiradi. O'chirilgan/bloklangan → 404; private + non-follower →
-   * 403. Ruxsat bo'lsa stream qilinadigan fayl ma'lumotini qaytaradi.
+   * 403. Ruxsat bo'lsa Cloudinary URL qaytaradi.
    */
   async resolveForViewer(
     mediaId: string,
@@ -71,7 +78,6 @@ export class MediaService {
     if (!media || !post || !author || post.deletedAt) {
       throw AppException.notFound('Media topilmadi');
     }
-    // Bloklangan egasining mediasi boshqalarga ko'rinmaydi
     if (author.isBlocked && author.id !== viewerId) {
       throw AppException.notFound('Media topilmadi');
     }
@@ -82,17 +88,11 @@ export class MediaService {
       'Bu media faqat obunachilarga ko`rinadi',
     );
 
-    return {
-      absPath: this.resolveUploadPath(media.path),
-      mimeType: media.mimeType,
-      sizeBytes: media.sizeBytes,
-    };
+    return { url: media.path, mimeType: media.mimeType };
   }
 
   /**
-   * Image faylni magic-byte (kontent) va hajm bo'yicha tekshiradi. Faqat
-   * extension'ga ishonmaymiz — bu xavfsizlik talabi (SRS). Topilgan haqiqiy
-   * kengaytmani qaytaradi.
+   * Image faylni magic-byte (kontent) va hajm bo'yicha tekshiradi.
    */
   validateImage(file: Express.Multer.File, maxBytes: number): ImageExt {
     if (file.size > maxBytes) {
@@ -114,9 +114,8 @@ export class MediaService {
   }
 
   /**
-   * Avatarni `${UPLOAD_DIR}/avatars/{userId}.{ext}` ga yozadi. Avvalgi (boshqa
-   * kengaytmali) avatar bo'lsa o'chiriladi. Servga yaroqli public yo'lni
-   * qaytaradi (`/uploads/avatars/{userId}.{ext}`).
+   * Avatarni Cloudinary'ga yuklaydi. Avvalgi avatar o'chiriladi.
+   * Cloudinary secure URL qaytaradi (User.avatarUrl'da saqlanadi).
    */
   async storeAvatar(
     userId: string,
@@ -125,26 +124,23 @@ export class MediaService {
     const ext = this.validateImage(file, AVATAR_MAX_BYTES);
     await this.deleteAvatar(userId);
 
-    const dir = this.avatarDir();
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, `${userId}.${ext}`), file.buffer);
-
-    return `/uploads/avatars/${userId}.${ext}`;
+    const result = await this.uploadBuffer(
+      file.buffer,
+      `${CLOUD_FOLDER}/avatars/${userId}`,
+      'image',
+    );
+    return result.secure_url;
   }
 
-  /** Foydalanuvchining avatar fayl(lar)ini o'chiradi (qaysi kengaytma bo'lsa ham). */
+  /** Foydalanuvchining Cloudinary avatatrini o'chiradi. */
   async deleteAvatar(userId: string): Promise<void> {
-    const dir = this.avatarDir();
-    await Promise.all(
-      (['jpg', 'png', 'webp'] as ImageExt[]).map((ext) =>
-        fs.rm(path.join(dir, `${userId}.${ext}`), { force: true }),
-      ),
-    );
+    await cloudinary.uploader
+      .destroy(`${CLOUD_FOLDER}/avatars/${userId}`, { resource_type: 'image' })
+      .catch(() => {});
   }
 
   /**
-   * Post media faylini (rasm yoki video) magic-byte + hajm bo'yicha tekshiradi.
-   * Rasm ≤5MB, video ≤20MB. Topilgan kind + kengaytmani qaytaradi.
+   * Post media faylini magic-byte + hajm bo'yicha tekshiradi.
    */
   validatePostMedia(file: Express.Multer.File): ValidatedMedia {
     const imageExt = detectImageType(file.buffer);
@@ -165,8 +161,8 @@ export class MediaService {
   }
 
   /**
-   * Post media faylini `${UPLOAD_DIR}/posts/{postId}/{mediaId}.{ext}` ga yozadi.
-   * DB'da saqlanadigan nisbiy `path`ni qaytaradi.
+   * Post media faylini Cloudinary'ga yuklaydi.
+   * Cloudinary secure URL qaytaradi (Media.path'da saqlanadi).
    */
   async storePostMedia(
     postId: string,
@@ -174,37 +170,39 @@ export class MediaService {
     ext: string,
     buffer: Buffer,
   ): Promise<string> {
-    const dir = path.join(this.uploadDir(), 'posts', postId);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(path.join(dir, `${mediaId}.${ext}`), buffer);
-    return `posts/${postId}/${mediaId}.${ext}`;
+    const mime = this.mimeFor(ext as ImageExt | VideoExt);
+    const resourceType = mime.startsWith('video') ? 'video' : 'image';
+
+    const result = await this.uploadBuffer(
+      buffer,
+      `${CLOUD_FOLDER}/posts/${postId}/${mediaId}`,
+      resourceType,
+    );
+    return result.secure_url;
   }
 
-  /** Post papkasini butunlay o'chiradi (tranzaksion rollback / cleanup uchun). */
+  /** Post papkasidagi barcha Cloudinary assetlarni o'chiradi. */
   async deletePostDir(postId: string): Promise<void> {
-    await fs.rm(path.join(this.uploadDir(), 'posts', postId), {
-      recursive: true,
-      force: true,
-    });
+    const prefix = `${CLOUD_FOLDER}/posts/${postId}/`;
+    await Promise.all([
+      cloudinary.api
+        .delete_resources_by_prefix(prefix, { resource_type: 'image' })
+        .catch(() => {}),
+      cloudinary.api
+        .delete_resources_by_prefix(prefix, { resource_type: 'video' })
+        .catch(() => {}),
+    ]);
   }
 
-  /** DB'dagi nisbiy `path`dan absolyut fayl yo'lini beradi (streaming uchun). */
-  resolveUploadPath(relativePath: string): string {
-    return path.join(this.uploadDir(), relativePath);
+  /** DB'dagi `Media.path` — endi Cloudinary URL sifatida saqlanadi. */
+  resolveUploadPath(url: string): string {
+    return url;
   }
 
-  /**
-   * Validatsiyalangan kengaytmadan MIME turini beradi. `file.mimetype`ga
-   * (mijoz yuboradi, ishonchsiz) emas, magic-byte natijasiga tayanamiz.
-   */
   mimeFor(ext: ImageExt | VideoExt): string {
     return EXT_MIME[ext];
   }
 
-  /**
-   * Kelajakda rasm siqish / video transcoding shu yerga qo'shiladi. Hozircha
-   * no-op — fayl shundayligicha saqlanadi (SRS).
-   */
   process(buffer: Buffer): Buffer {
     return buffer;
   }
@@ -219,18 +217,27 @@ export class MediaService {
     }
   }
 
-  private uploadDir(): string {
-    return path.resolve(this.config.get('UPLOAD_DIR', { infer: true }));
-  }
-
-  private avatarDir(): string {
-    return path.join(this.uploadDir(), 'avatars');
+  private uploadBuffer(
+    buffer: Buffer,
+    publicId: string,
+    resourceType: 'image' | 'video',
+  ): Promise<UploadApiResponse> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          { public_id: publicId, resource_type: resourceType, overwrite: true },
+          (error, result) => {
+            if (error || !result) reject(error);
+            else resolve(result);
+          },
+        )
+        .end(buffer);
+    });
   }
 }
 
 /**
- * Video turini magic-byte bo'yicha aniqlaydi. mp4/mov: offset 4-8 = "ftyp"
- * (brand "qt  " → mov, aks holda mp4); webm: EBML 1A 45 DF A3.
+ * Video turini magic-byte bo'yicha aniqlaydi.
  */
 export function detectVideoType(buf: Buffer): VideoExt | null {
   if (
@@ -251,7 +258,6 @@ export function detectVideoType(buf: Buffer): VideoExt | null {
 
 /**
  * Buffer boshidagi magic-byte'lar bo'yicha image turini aniqlaydi.
- * Faqat 3 format — tashqi kutubxonasiz, ESM muammosisiz.
  */
 export function detectImageType(buf: Buffer): ImageExt | null {
   if (

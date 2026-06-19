@@ -15,8 +15,10 @@ import type { ApiSuccess } from './types';
  * uchun `withCredentials`. Request interceptor access token qo'shadi; response
  * interceptor 401'da bir marta refresh qilib, so'rovni qayta yuboradi.
  */
+const API_BASE = `${import.meta.env.VITE_API_URL ?? ''}/api/v1`;
+
 export const apiClient = axios.create({
-  baseURL: '/api/v1',
+  baseURL: API_BASE,
   withCredentials: true,
 });
 
@@ -29,7 +31,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 // Refresh endpointi alohida instance — interceptor loop bo'lmasligi uchun.
-const refreshClient = axios.create({ baseURL: '/api/v1', withCredentials: true });
+const refreshClient = axios.create({ baseURL: API_BASE, withCredentials: true });
 
 interface RetriableConfig extends AxiosRequestConfig {
   _retry?: boolean;
