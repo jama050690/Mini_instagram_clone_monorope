@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PostType {
+  IMAGE
+  CAROUSEL
+  VIDEO
+}
+
+enum PostStatus {
+  PUBLISHED
+  FAILED
+}
+
+enum MediaKind {
+  IMAGE
+  VIDEO
+}
+
+enum FollowStatus {
+  PENDING
+  ACCEPTED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  username     String   @unique
+  fullName     String
+  bio          String?
+  avatarUrl    String?
+  isPrivate    Boolean  @default(false)
+  role         Role     @default(USER)
+  isBlocked    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  refreshTokens RefreshToken[]
+  following     Follow[]       @relation("follower")
+  followers     Follow[]       @relation("following")
+
+  @@index([username])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  userAgent String?
+  ip        String?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Post {
+  id        String     @id @default(cuid())
+  authorId  String
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  caption   String?
+  type      PostType
+  status    PostStatus @default(PUBLISHED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  media    Media[]
+  comments Comment[]
+  likes    Like[]
+
+  @@index([authorId, createdAt])
+}
+
+model Media {
+  id         String    @id @default(cuid())
+  postId     String
+  post       Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  kind       MediaKind
+  path       String
+  order      Int       @default(0)
+  width      Int?
+  height     Int?
+  durationMs Int?
+  sizeBytes  Int
+  mimeType   String
+  createdAt  DateTime  @default(now())
+
+  @@index([postId])
+}
+
+model Follow {
+  id          String       @id @default(cuid())
+  followerId  String
+  followingId String
+  follower    User         @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User         @relation("following", fields: [followingId], references: [id], onDelete: Cascade)
+  status      FollowStatus @default(ACCEPTED)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([followerId, followingId])
+  @@index([followingId, status])
+  @@index([followerId, status])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  postId    String
+  authorId  String
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+
+  @@index([postId, createdAt])
+}

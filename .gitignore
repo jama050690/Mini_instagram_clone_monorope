@@ -1,0 +1,66 @@
+# compiled output
+dist
+node_modules
+/build
+
+# uploaded media (lokal disk storage) — papka qoladi, kontent ignore
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+
+# e2e/unit testlar yozadigan vaqtinchalik upload papkalari
+apps/api/test/.tmp-uploads*/
+
+# Prisma
+apps/api/prisma/*.db
+
+# Logs
+logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+.DS_Store
+
+# Tests
+/coverage
+/.nyc_output
+
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# dotenv environment variable files
+# (.env.example va .env.test [test-fixture, dummy qiymatlar] bundan mustasno)
+.env
+.env.*
+!.env.example
+!.env.test
+
+# temp directory
+.temp
+.tmp
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json

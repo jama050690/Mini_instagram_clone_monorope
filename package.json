@@ -1,0 +1,19 @@
+{
+  "name": "instagram-mvp",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Kichik Instagram (MVP) — NestJS + React monorepo",
+  "license": "UNLICENSED",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run start:dev -w apps/api",
+    "api:build": "npm run build -w apps/api",
+    "api:test": "npm run test -w apps/api",
+    "web:dev": "npm run dev -w apps/web",
+    "db:migrate": "npm run prisma:migrate -w apps/api",
+    "db:generate": "npm run prisma:generate -w apps/api",
+    "db:studio": "npm run prisma:studio -w apps/api"
+  }
+}
