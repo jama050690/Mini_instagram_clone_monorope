@@ -1,3 +1,5 @@
+import * as path from 'path';
+import * as express from 'express';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -11,7 +13,16 @@ async function bootstrap() {
   // Global sozlamalar (prefiks, cookie, CORS, pipe, interceptor, filter)
   configureApp(app);
 
-  // Swagger (faqat prod ilovada)
+  const config = app.get(ConfigService<Env, true>);
+
+  // Uploads papkasini public static fayl sifatida serve qilish (avatar uchun)
+  const uploadDir = config.get('UPLOAD_DIR', { infer: true });
+  const absUploadDir = path.isAbsolute(uploadDir)
+    ? uploadDir
+    : path.resolve(process.cwd(), uploadDir);
+  app.use('/uploads', express.static(absUploadDir));
+
+  // Swagger
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Instagram MVP API')
     .setDescription('Kichik Instagram (MVP) — REST API')
@@ -21,7 +32,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api/docs', app, document);
 
-  const config = app.get(ConfigService<Env, true>);
   const port = config.get('PORT', { infer: true });
   await app.listen(port);
 

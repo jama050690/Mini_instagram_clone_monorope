@@ -3,10 +3,6 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MediaService } from './media.service';
 
-/**
- * Yetim Cloudinary assetlarni davriy tozalash. DB'da posti yo'q Media
- * yozuvlarini topib, Cloudinary'dan o'chiradi.
- */
 @Injectable()
 export class MediaCleanupService {
   private readonly logger = new Logger(MediaCleanupService.name);
@@ -20,7 +16,7 @@ export class MediaCleanupService {
   async handleCron(): Promise<void> {
     const removed = await this.sweepOrphans();
     if (removed > 0) {
-      this.logger.log(`Cleanup: ${removed} ta yetim post o'chirildi`);
+      this.logger.log(`Cleanup: ${removed} ta yetim post fayllari o'chirildi`);
     }
   }
 

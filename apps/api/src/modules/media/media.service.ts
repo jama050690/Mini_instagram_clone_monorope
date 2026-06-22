@@ -1,15 +1,15 @@
-import { HttpStatus, Injectable, OnModuleInit } from '@nestjs/common';
+import * as fs from 'fs';
+import * as path from 'path';
+import { HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { AppException } from '../../common/exceptions/app.exception';
 import { Env } from '../../config/env.validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityService } from '../visibility/visibility.service';
 
-/** `GET /media/:id` uchun Cloudinary URL ma'lumoti. */
 export interface ServableMedia {
-  url: string;
+  absPath: string;
   mimeType: string;
 }
 
@@ -17,7 +17,6 @@ export type ImageExt = 'jpg' | 'png' | 'webp';
 export type VideoExt = 'mp4' | 'webm' | 'mov';
 export type MediaKind = 'IMAGE' | 'VIDEO';
 
-/** Cheklovlar (SRS 4.3): avatar 2MB, post rasm 5MB, post video 20MB. */
 export const AVATAR_MAX_BYTES = 2 * 1024 * 1024;
 export const POST_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const POST_VIDEO_MAX_BYTES = 20 * 1024 * 1024;
@@ -27,7 +26,6 @@ export interface ValidatedMedia {
   ext: ImageExt | VideoExt;
 }
 
-/** Validatsiyalangan kengaytma → MIME (DB'da Media.mimeType uchun). */
 const EXT_MIME: Record<ImageExt | VideoExt, string> = {
   jpg: 'image/jpeg',
   png: 'image/png',
@@ -37,33 +35,24 @@ const EXT_MIME: Record<ImageExt | VideoExt, string> = {
   mov: 'video/quicktime',
 };
 
-const CLOUD_FOLDER = 'instagram-clone';
-
 @Injectable()
-export class MediaService implements OnModuleInit {
+export class MediaService {
+  private readonly uploadDir: string;
+  private readonly baseUrl: string;
+
   constructor(
     private readonly config: ConfigService<Env, true>,
     private readonly prisma: PrismaService,
     private readonly visibility: VisibilityService,
-  ) {}
+  ) {
+    const configured = this.config.get('UPLOAD_DIR', { infer: true });
+    this.uploadDir = path.isAbsolute(configured)
+      ? configured
+      : path.resolve(process.cwd(), configured);
 
-  onModuleInit(): void {
-    const cloudName = this.config.get('CLOUDINARY_CLOUD_NAME', { infer: true });
-    if (cloudName) {
-      cloudinary.config({
-        cloud_name: cloudName,
-        api_key: this.config.get('CLOUDINARY_API_KEY', { infer: true }),
-        api_secret: this.config.get('CLOUDINARY_API_SECRET', { infer: true }),
-        secure: true,
-      });
-    }
+    this.baseUrl = this.config.get('API_BASE_URL', { infer: true });
   }
 
-  /**
-   * `GET /media/:id` uchun: media + post + egasini yuklaydi va viewer ko'ra
-   * oladimi tekshiradi. O'chirilgan/bloklangan → 404; private + non-follower →
-   * 403. Ruxsat bo'lsa Cloudinary URL qaytaradi.
-   */
   async resolveForViewer(
     mediaId: string,
     viewerId: string,
@@ -88,12 +77,9 @@ export class MediaService implements OnModuleInit {
       'Bu media faqat obunachilarga ko`rinadi',
     );
 
-    return { url: media.path, mimeType: media.mimeType };
+    return { absPath: media.path, mimeType: media.mimeType };
   }
 
-  /**
-   * Image faylni magic-byte (kontent) va hajm bo'yicha tekshiradi.
-   */
   validateImage(file: Express.Multer.File, maxBytes: number): ImageExt {
     if (file.size > maxBytes) {
       throw new AppException(
@@ -113,10 +99,6 @@ export class MediaService implements OnModuleInit {
     return ext;
   }
 
-  /**
-   * Avatarni Cloudinary'ga yuklaydi. Avvalgi avatar o'chiriladi.
-   * Cloudinary secure URL qaytaradi (User.avatarUrl'da saqlanadi).
-   */
   async storeAvatar(
     userId: string,
     file: Express.Multer.File,
@@ -124,24 +106,24 @@ export class MediaService implements OnModuleInit {
     const ext = this.validateImage(file, AVATAR_MAX_BYTES);
     await this.deleteAvatar(userId);
 
-    const result = await this.uploadBuffer(
-      file.buffer,
-      `${CLOUD_FOLDER}/avatars/${userId}`,
-      'image',
-    );
-    return result.secure_url;
+    const dir = path.join(this.uploadDir, 'avatars');
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${userId}.${ext}`;
+    fs.writeFileSync(path.join(dir, filename), file.buffer);
+
+    return `${this.baseUrl}/uploads/avatars/${filename}`;
   }
 
-  /** Foydalanuvchining Cloudinary avatatrini o'chiradi. */
   async deleteAvatar(userId: string): Promise<void> {
-    await cloudinary.uploader
-      .destroy(`${CLOUD_FOLDER}/avatars/${userId}`, { resource_type: 'image' })
-      .catch(() => {});
+    const dir = path.join(this.uploadDir, 'avatars');
+    for (const ext of ['jpg', 'png', 'webp'] as ImageExt[]) {
+      const filePath = path.join(dir, `${userId}.${ext}`);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
   }
 
-  /**
-   * Post media faylini magic-byte + hajm bo'yicha tekshiradi.
-   */
   validatePostMedia(file: Express.Multer.File): ValidatedMedia {
     const imageExt = detectImageType(file.buffer);
     if (imageExt) {
@@ -160,43 +142,27 @@ export class MediaService implements OnModuleInit {
     );
   }
 
-  /**
-   * Post media faylini Cloudinary'ga yuklaydi.
-   * Cloudinary secure URL qaytaradi (Media.path'da saqlanadi).
-   */
   async storePostMedia(
     postId: string,
     mediaId: string,
     ext: string,
     buffer: Buffer,
   ): Promise<string> {
-    const mime = this.mimeFor(ext as ImageExt | VideoExt);
-    const resourceType = mime.startsWith('video') ? 'video' : 'image';
-
-    const result = await this.uploadBuffer(
-      buffer,
-      `${CLOUD_FOLDER}/posts/${postId}/${mediaId}`,
-      resourceType,
-    );
-    return result.secure_url;
+    const dir = path.join(this.uploadDir, 'posts', postId);
+    fs.mkdirSync(dir, { recursive: true });
+    const filename = `${mediaId}.${ext}`;
+    const absPath = path.join(dir, filename);
+    fs.writeFileSync(absPath, buffer);
+    return absPath;
   }
 
-  /** Post papkasidagi barcha Cloudinary assetlarni o'chiradi. */
   async deletePostDir(postId: string): Promise<void> {
-    const prefix = `${CLOUD_FOLDER}/posts/${postId}/`;
-    await Promise.all([
-      cloudinary.api
-        .delete_resources_by_prefix(prefix, { resource_type: 'image' })
-        .catch(() => {}),
-      cloudinary.api
-        .delete_resources_by_prefix(prefix, { resource_type: 'video' })
-        .catch(() => {}),
-    ]);
+    const dir = path.join(this.uploadDir, 'posts', postId);
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 
-  /** DB'dagi `Media.path` — endi Cloudinary URL sifatida saqlanadi. */
-  resolveUploadPath(url: string): string {
-    return url;
+  resolveUploadPath(absPath: string): string {
+    return absPath;
   }
 
   mimeFor(ext: ImageExt | VideoExt): string {
@@ -216,29 +182,8 @@ export class MediaService implements OnModuleInit {
       );
     }
   }
-
-  private uploadBuffer(
-    buffer: Buffer,
-    publicId: string,
-    resourceType: 'image' | 'video',
-  ): Promise<UploadApiResponse> {
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader
-        .upload_stream(
-          { public_id: publicId, resource_type: resourceType, overwrite: true },
-          (error, result) => {
-            if (error || !result) reject(error);
-            else resolve(result);
-          },
-        )
-        .end(buffer);
-    });
-  }
 }
 
-/**
- * Video turini magic-byte bo'yicha aniqlaydi.
- */
 export function detectVideoType(buf: Buffer): VideoExt | null {
   if (
     buf.length >= 4 &&
@@ -256,9 +201,6 @@ export function detectVideoType(buf: Buffer): VideoExt | null {
   return null;
 }
 
-/**
- * Buffer boshidagi magic-byte'lar bo'yicha image turini aniqlaydi.
- */
 export function detectImageType(buf: Buffer): ImageExt | null {
   if (
     buf.length >= 3 &&

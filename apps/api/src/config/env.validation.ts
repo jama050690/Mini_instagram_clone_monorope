@@ -58,6 +58,8 @@ export const envSchema = z.object({
   // ── Media (M2 avatar / M3) ──
   // Yuklangan fayllar saqlanadigan papka (process.cwd() ga nisbatan yoki absolute)
   UPLOAD_DIR: z.string().default('uploads'),
+  // Avatar URL uchun server base URL (avatar public URL quriladi)
+  API_BASE_URL: z.string().url().default('http://localhost:3000'),
 });
 
 export type Env = z.infer<typeof envSchema>;

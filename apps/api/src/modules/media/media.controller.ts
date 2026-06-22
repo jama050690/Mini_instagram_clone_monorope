@@ -1,14 +1,14 @@
+import * as fs from 'fs';
 import {
   Controller,
   Get,
   Header,
+  NotFoundException,
   Param,
   Res,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { get as httpGet } from 'http';
-import { get as httpsGet } from 'https';
 import { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -22,7 +22,7 @@ export class MediaController {
   constructor(private readonly media: MediaService) {}
 
   @Get(':id')
-  @ApiOperation({ summary: 'Media proxy (avtorizatsiya + Cloudinary stream)' })
+  @ApiOperation({ summary: 'Media stream (avtorizatsiya + disk)' })
   @Header('Cache-Control', 'private, max-age=86400')
   async serve(
     @Param('id') id: string,
@@ -31,17 +31,11 @@ export class MediaController {
   ): Promise<void> {
     const file = await this.media.resolveForViewer(id, viewerId);
 
-    res.setHeader('Content-Type', file.mimeType);
+    if (!fs.existsSync(file.absPath)) {
+      throw new NotFoundException('Fayl topilmadi');
+    }
 
-    const getter = file.url.startsWith('https') ? httpsGet : httpGet;
-    getter(file.url, (upstream) => {
-      upstream.pipe(res);
-    }).on('error', () => {
-      if (!res.headersSent) {
-        res
-          .status(404)
-          .json({ success: false, error: { message: 'Fayl topilmadi' } });
-      }
-    });
+    res.setHeader('Content-Type', file.mimeType);
+    fs.createReadStream(file.absPath).pipe(res);
   }
 }
