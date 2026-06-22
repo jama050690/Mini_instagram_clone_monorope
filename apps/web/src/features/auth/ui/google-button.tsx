@@ -11,7 +11,7 @@ export function GoogleButton({ label = 'Google bilan davom etish' }: { label?: s
       variant="outline"
       className="w-full"
       onClick={() => {
-        window.location.href = '/api/v1/auth/google';
+        window.location.href = `${import.meta.env.VITE_API_URL ?? ''}/api/v1/auth/google`;
       }}
     >
       {label}
