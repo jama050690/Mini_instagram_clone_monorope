@@ -9,6 +9,7 @@ import { OnboardingPage } from '@/pages/onboarding';
 import { PostPage } from '@/pages/post';
 import { ProfilePage } from '@/pages/profile';
 import { RegisterPage } from '@/pages/register';
+import { NotificationsPage } from '@/pages/notifications';
 import { RequestsPage } from '@/pages/requests';
 import { SearchPage } from '@/pages/search';
 import { SettingsPage } from '@/pages/settings';
@@ -39,6 +40,7 @@ export const router = createBrowserRouter([
           { path: '/create', element: <CreatePostPage /> },
           { path: '/search', element: <SearchPage /> },
           { path: '/requests', element: <RequestsPage /> },
+          { path: '/notifications', element: <NotificationsPage /> },
           { path: '/settings', element: <SettingsPage /> },
           { path: '/p/:id', element: <PostPage /> },
           { path: '/u/:username', element: <ProfilePage /> },

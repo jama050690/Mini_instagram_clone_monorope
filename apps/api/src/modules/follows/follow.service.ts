@@ -4,6 +4,7 @@ import { ErrorCode } from '../../common/errors/error-codes';
 import { AppException } from '../../common/exceptions/app.exception';
 import { buildPage, normalizeLimit, Page } from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../notifications/notification.service';
 import { toUserCard, UserCard } from '../users/user-card.serializer';
 import { VisibilityService } from '../visibility/visibility.service';
 import { FollowState } from './follow.serializer';
@@ -13,6 +14,7 @@ export class FollowService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly visibility: VisibilityService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /**
@@ -46,6 +48,11 @@ export class FollowService {
       : FollowStatus.ACCEPTED;
     await this.prisma.follow.create({
       data: { followerId: follower.id, followingId: target.id, status },
+    });
+    await this.notifications.create({
+      type: status === FollowStatus.ACCEPTED ? 'NEW_FOLLOWER' : 'FOLLOW_REQUEST',
+      recipientId: target.id,
+      actorId: follower.id,
     });
     return { relationship: this.toRelationship(status) };
   }
@@ -94,6 +101,11 @@ export class FollowService {
     if (result.count === 0) {
       throw AppException.notFound('So`rov topilmadi');
     }
+    await this.notifications.create({
+      type: 'FOLLOW_ACCEPTED',
+      recipientId: requesterId,
+      actorId: user.id,
+    });
   }
 
   /** So'rovni rad etish (PENDING yozuv o'chiriladi) — faqat target egasi. */

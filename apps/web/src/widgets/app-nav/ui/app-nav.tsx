@@ -1,4 +1,5 @@
 import {
+  Bell,
   Home,
   LogOut,
   PlusSquare,
@@ -11,6 +12,7 @@ import {
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import { UserAvatar } from '@/entities/user';
 import { useAuthStore, useLogoutMutation } from '@/features/auth';
+import { useUnreadCount } from '@/features/notifications';
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui';
 
@@ -24,6 +26,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 export function AppNav() {
   const user = useAuthStore((s) => s.user);
   const logout = useLogoutMutation();
+  const { data: unreadCount = 0 } = useUnreadCount();
   if (!user) return null;
 
   return (
@@ -49,6 +52,17 @@ export function AppNav() {
             <NavLink to="/requests" className={linkClass}>
               <UserPlus className="size-4" />
               <span className="hidden sm:inline">So`rovlar</span>
+            </NavLink>
+            <NavLink to="/notifications" className={linkClass}>
+              <span className="relative">
+                <Bell className="size-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 flex size-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </span>
+              <span className="hidden sm:inline">Xabarnoma</span>
             </NavLink>
             <NavLink to={`/u/${user.username}`} className={linkClass}>
               <User className="size-4" />

@@ -14,6 +14,7 @@ import { EngagementModule } from './modules/engagement/engagement.module';
 import { FollowModule } from './modules/follows/follow.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { NotificationModule } from './modules/notifications/notification.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { AdminModule } from './modules/admin/admin.module';
     FollowModule,
     FeedModule,
     AdminModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}

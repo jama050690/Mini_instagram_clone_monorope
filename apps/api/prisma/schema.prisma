@@ -33,6 +33,14 @@ enum FollowStatus {
   ACCEPTED
 }
 
+enum NotificationType {
+  NEW_FOLLOWER
+  FOLLOW_REQUEST
+  FOLLOW_ACCEPTED
+  POST_LIKED
+  POST_COMMENTED
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -48,12 +56,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  posts         Post[]
-  comments      Comment[]
-  likes         Like[]
-  refreshTokens RefreshToken[]
-  following     Follow[]       @relation("follower")
-  followers     Follow[]       @relation("following")
+  posts                  Post[]
+  comments               Comment[]
+  likes                  Like[]
+  refreshTokens          RefreshToken[]
+  following              Follow[]         @relation("follower")
+  followers              Follow[]         @relation("following")
+  receivedNotifications  Notification[]   @relation("ReceivedNotifications")
+  sentNotifications      Notification[]   @relation("SentNotifications")
 
   @@index([username])
 }
@@ -83,9 +93,10 @@ model Post {
   updatedAt DateTime   @updatedAt
   deletedAt DateTime?
 
-  media    Media[]
-  comments Comment[]
-  likes    Like[]
+  media         Media[]
+  comments      Comment[]
+  likes         Like[]
+  notifications Notification[]
 
   @@index([authorId, createdAt])
 }
@@ -145,4 +156,20 @@ model Comment {
   deletedAt DateTime?
 
   @@index([postId, createdAt])
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  recipientId String
+  recipient   User             @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  actorId     String
+  actor       User             @relation("SentNotifications", fields: [actorId], references: [id], onDelete: Cascade)
+  postId      String?
+  post        Post?            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  isRead      Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId, isRead])
+  @@index([recipientId, createdAt])
 }

@@ -3,6 +3,7 @@ import { Role, User } from '@prisma/client';
 import { AppException } from '../../common/exceptions/app.exception';
 import { buildPage, normalizeLimit, Page } from '../../common/utils/pagination';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../notifications/notification.service';
 import { PostView } from '../posts/post.serializer';
 import { PostsService } from '../posts/posts.service';
 import {
@@ -16,16 +17,30 @@ export class EngagementService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly posts: PostsService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /** Like bosish — idempotent (takror → xato emas). Yangilangan postni qaytaradi. */
   async like(postId: string, user: User): Promise<PostView> {
     await this.posts.assertViewablePost(postId, user);
-    await this.prisma.like.upsert({
+    const existing = await this.prisma.like.findUnique({
       where: { userId_postId: { userId: user.id, postId } },
-      create: { userId: user.id, postId },
-      update: {},
     });
+    if (!existing) {
+      await this.prisma.like.create({ data: { userId: user.id, postId } });
+      const post = await this.prisma.post.findUnique({
+        where: { id: postId },
+        select: { authorId: true },
+      });
+      if (post) {
+        await this.notifications.create({
+          type: 'POST_LIKED',
+          recipientId: post.authorId,
+          actorId: user.id,
+          postId,
+        });
+      }
+    }
     return this.posts.getById(postId, user);
   }
 
@@ -43,10 +58,24 @@ export class EngagementService {
     text: string,
   ): Promise<CommentView> {
     await this.posts.assertViewablePost(postId, user);
-    const comment = await this.prisma.comment.create({
-      data: { postId, authorId: user.id, text },
-      include: commentInclude,
-    });
+    const [comment, post] = await Promise.all([
+      this.prisma.comment.create({
+        data: { postId, authorId: user.id, text },
+        include: commentInclude,
+      }),
+      this.prisma.post.findUnique({
+        where: { id: postId },
+        select: { authorId: true },
+      }),
+    ]);
+    if (post) {
+      await this.notifications.create({
+        type: 'POST_COMMENTED',
+        recipientId: post.authorId,
+        actorId: user.id,
+        postId,
+      });
+    }
     return toCommentView(comment);
   }
 
