@@ -8,7 +8,6 @@ import {
   useNotificationsList,
   type NotificationItem,
 } from '@/features/notifications';
-import { Button } from '@/shared/ui';
 
 function notificationText(n: NotificationItem): string {
   switch (n.type) {
@@ -22,6 +21,10 @@ function notificationText(n: NotificationItem): string {
       return 'postingizni yoqtirdi';
     case 'POST_COMMENTED':
       return 'postingizga izoh qoldirdi';
+    case 'POST_CREATED':
+      return 'yangi post qo\'ydi';
+    default:
+      return '';
   }
 }
 

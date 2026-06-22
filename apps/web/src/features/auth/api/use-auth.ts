@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/shared/api';
+import { registerPushSubscription } from '@/features/push/use-push-subscribe';
 import { useAuthStore } from '../model/auth.store';
 import {
   googleCompleteRequest,
@@ -13,11 +14,18 @@ function useSessionSetter() {
   return useAuthStore((s) => s.setSession);
 }
 
+function afterLogin(setSession: (user: AuthResult['user'], token: string) => void) {
+  return (res: AuthResult) => {
+    setSession(res.user, res.accessToken);
+    registerPushSubscription();
+  };
+}
+
 export function useLoginMutation() {
   const setSession = useSessionSetter();
   return useMutation({
     mutationFn: loginRequest,
-    onSuccess: (res: AuthResult) => setSession(res.user, res.accessToken),
+    onSuccess: afterLogin(setSession),
   });
 }
 
@@ -25,7 +33,7 @@ export function useRegisterMutation() {
   const setSession = useSessionSetter();
   return useMutation({
     mutationFn: registerRequest,
-    onSuccess: (res: AuthResult) => setSession(res.user, res.accessToken),
+    onSuccess: afterLogin(setSession),
   });
 }
 

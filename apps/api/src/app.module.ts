@@ -15,6 +15,7 @@ import { FollowModule } from './modules/follows/follow.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { NotificationModule } from './modules/notifications/notification.module';
+import { PushModule } from './modules/push/push.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { NotificationModule } from './modules/notifications/notification.module'
     FeedModule,
     AdminModule,
     NotificationModule,
+    PushModule,
   ],
 })
 export class AppModule {}

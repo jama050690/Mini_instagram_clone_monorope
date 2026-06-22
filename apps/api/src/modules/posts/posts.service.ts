@@ -1,5 +1,5 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { MediaKind, PostType, Role, User } from '@prisma/client';
+import { FollowStatus, MediaKind, PostType, Role, User } from '@prisma/client';
 import { ErrorCode } from '../../common/errors/error-codes';
 import { AppException } from '../../common/exceptions/app.exception';
 import { buildPage, normalizeLimit, Page } from '../../common/utils/pagination';
@@ -9,6 +9,7 @@ import {
   type ImageExt,
   type VideoExt,
 } from '../media/media.service';
+import { NotificationService } from '../notifications/notification.service';
 import { VisibilityService } from '../visibility/visibility.service';
 import { PostView, postIncludeFor, toPostView } from './post.serializer';
 
@@ -27,6 +28,7 @@ export class PostsService {
     private readonly prisma: PrismaService,
     private readonly media: MediaService,
     private readonly visibility: VisibilityService,
+    private readonly notifications: NotificationService,
   ) {}
 
   /**
@@ -88,13 +90,33 @@ export class PostsService {
         return created;
       });
 
-      return this.getById(post.id, author);
+      const postView = await this.getById(post.id, author);
+      // Followerlarni async xabardor qilish (bloklamas)
+      this.notifyFollowers(author.id, post.id).catch(() => {});
+      return postView;
     } catch (err) {
       if (createdPostId) {
         await this.media.deletePostDir(createdPostId).catch(() => undefined);
       }
       throw err;
     }
+  }
+
+  private async notifyFollowers(authorId: string, postId: string): Promise<void> {
+    const followers = await this.prisma.follow.findMany({
+      where: { followingId: authorId, status: FollowStatus.ACCEPTED },
+      select: { followerId: true },
+    });
+    await Promise.all(
+      followers.map((f) =>
+        this.notifications.create({
+          type: 'POST_CREATED',
+          recipientId: f.followerId,
+          actorId: authorId,
+          postId,
+        }),
+      ),
+    );
   }
 
   /** Bitta postni maxfiylikka bo'ysunib qaytaradi (404/403). */

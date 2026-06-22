@@ -60,6 +60,11 @@ export const envSchema = z.object({
   UPLOAD_DIR: z.string().default('uploads'),
   // Avatar URL uchun server base URL (avatar public URL quriladi)
   API_BASE_URL: z.string().url().default('http://localhost:3000'),
+
+  // ── Web Push (VAPID) ──
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_MAILTO: z.string().default('mailto:admin@example.com'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -39,6 +39,7 @@ enum NotificationType {
   FOLLOW_ACCEPTED
   POST_LIKED
   POST_COMMENTED
+  POST_CREATED
 }
 
 model User {
@@ -62,8 +63,9 @@ model User {
   refreshTokens          RefreshToken[]
   following              Follow[]         @relation("follower")
   followers              Follow[]         @relation("following")
-  receivedNotifications  Notification[]   @relation("ReceivedNotifications")
-  sentNotifications      Notification[]   @relation("SentNotifications")
+  receivedNotifications  Notification[]    @relation("ReceivedNotifications")
+  sentNotifications      Notification[]    @relation("SentNotifications")
+  pushSubscriptions      PushSubscription[]
 
   @@index([username])
 }
@@ -156,6 +158,18 @@ model Comment {
   deletedAt DateTime?
 
   @@index([postId, createdAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Notification {

@@ -5,7 +5,8 @@ export type NotificationType =
   | 'FOLLOW_REQUEST'
   | 'FOLLOW_ACCEPTED'
   | 'POST_LIKED'
-  | 'POST_COMMENTED';
+  | 'POST_COMMENTED'
+  | 'POST_CREATED';
 
 export interface NotificationItem {
   id: string;
