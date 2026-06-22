@@ -19,7 +19,7 @@ export function setRefreshCookie(
   res.cookie(REFRESH_COOKIE, token, {
     httpOnly: true,
     secure: opts.secure,
-    sameSite: 'lax',
+    sameSite: opts.secure ? 'none' : 'lax',
     path: '/api/v1/auth',
     maxAge: opts.maxAgeSec * 1000,
   });
@@ -29,7 +29,7 @@ export function clearRefreshCookie(res: Response, secure: boolean): void {
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: true,
     secure,
-    sameSite: 'lax',
+    sameSite: secure ? 'none' : 'lax',
     path: '/api/v1/auth',
   });
 }
