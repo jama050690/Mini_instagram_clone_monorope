@@ -40,17 +40,22 @@ export function PostCard({ post }: { post: Post }) {
   }
 
   return (
-    <article className="border-b border-neutral-200 bg-white pb-2">
+    <article className="overflow-hidden rounded-2xl bg-white/90 shadow-md backdrop-blur-sm transition-shadow hover:shadow-lg">
+      {/* Gradient top accent */}
+      <div
+        className="h-0.5 w-full"
+        style={{ background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #f59e0b)' }}
+      />
+
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3">
         <Link to={`/u/${post.author.username}`} className="flex items-center gap-3">
-          <UserAvatar
-            user={{ ...post.author, fullName: post.author.username }}
-            className="size-8"
-          />
-          <div>
-            <p className="text-sm font-semibold leading-tight">{post.author.username}</p>
+          <div className="rounded-full bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 p-[2px]">
+            <div className="rounded-full bg-white p-[1.5px]">
+              <UserAvatar user={{ ...post.author, fullName: post.author.username }} className="size-8" />
+            </div>
           </div>
+          <span className="text-sm font-semibold text-gray-900">{post.author.username}</span>
         </Link>
 
         {isOwner && (
@@ -58,23 +63,23 @@ export function PostCard({ post }: { post: Post }) {
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              className="p-1 text-neutral-800"
+              className="rounded-full p-1.5 text-gray-500 transition-colors hover:bg-gray-100"
             >
               <MoreHorizontal className="size-5" />
             </button>
             {menuOpen && (
-              <div className="absolute right-0 top-8 z-10 w-40 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
+              <div className="absolute right-0 top-9 z-10 w-44 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); setCaption(post.caption ?? ''); setEditing(true); }}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-sm hover:bg-neutral-50"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50"
                 >
                   <Pencil className="size-4" /> Tahrirlash
                 </button>
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-neutral-50"
+                  className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-500 hover:bg-red-50"
                 >
                   <Trash2 className="size-4" /> O`chirish
                 </button>
@@ -85,7 +90,7 @@ export function PostCard({ post }: { post: Post }) {
       </header>
 
       {/* Media */}
-      <div className="relative aspect-square bg-black">
+      <div className="relative aspect-square bg-gray-900">
         {media ? (
           <AuthedMedia media={media} className="size-full object-contain" />
         ) : null}
@@ -96,7 +101,7 @@ export function PostCard({ post }: { post: Post }) {
               aria-label="Oldingi"
               disabled={index === 0}
               onClick={() => setIndex((i) => Math.max(0, i - 1))}
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow disabled:opacity-30"
+              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-md backdrop-blur-sm disabled:opacity-30"
             >
               <ChevronLeft className="size-4" />
             </button>
@@ -105,19 +110,18 @@ export function PostCard({ post }: { post: Post }) {
               aria-label="Keyingi"
               disabled={index === post.media.length - 1}
               onClick={() => setIndex((i) => Math.min(post.media.length - 1, i + 1))}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow disabled:opacity-30"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-1.5 shadow-md backdrop-blur-sm disabled:opacity-30"
             >
               <ChevronRight className="size-4" />
             </button>
-            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1">
+            <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
               {post.media.map((m, i) => (
                 <span
                   key={m.id}
-                  className={
-                    i === index
-                      ? 'size-1.5 rounded-full bg-white'
-                      : 'size-1.5 rounded-full bg-white/40'
-                  }
+                  className={cn(
+                    'size-1.5 rounded-full transition-all',
+                    i === index ? 'scale-125 bg-white' : 'bg-white/50',
+                  )}
                 />
               ))}
             </div>
@@ -126,7 +130,7 @@ export function PostCard({ post }: { post: Post }) {
       </div>
 
       {/* Caption */}
-      <div className="px-4 pt-2">
+      <div className="px-4 pb-4 pt-3">
         {editing ? (
           <div className="space-y-2">
             <Textarea
@@ -149,12 +153,16 @@ export function PostCard({ post }: { post: Post }) {
             </div>
           </div>
         ) : post.caption ? (
-          <p className="whitespace-pre-line text-sm leading-snug">
-            <span className="font-semibold">{post.author.username}</span>{' '}
+          <p className="whitespace-pre-line text-sm leading-relaxed text-gray-800">
+            <span className="font-semibold text-gray-900">{post.author.username}</span>{' '}
             {post.caption}
           </p>
         ) : null}
       </div>
     </article>
   );
+}
+
+function cn(...classes: (string | boolean | undefined)[]) {
+  return classes.filter(Boolean).join(' ');
 }

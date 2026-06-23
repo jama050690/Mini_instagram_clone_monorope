@@ -8,8 +8,7 @@ export function LikeBar({ post }: { post: Post }) {
   const toggle = useToggleLike();
 
   return (
-    <div className="px-4 pb-2 pt-1">
-      {/* Action icons */}
+    <div className="px-4 pb-4 pt-1">
       <div className="mb-2 flex items-center">
         <div className="flex items-center gap-4">
           <button
@@ -17,43 +16,37 @@ export function LikeBar({ post }: { post: Post }) {
             aria-label={post.likedByMe ? 'Like olib tashlash' : 'Like bosish'}
             disabled={toggle.isPending}
             onClick={() => toggle.mutate(post)}
-            className="transition-transform active:scale-90 disabled:opacity-50"
+            className="group transition-transform active:scale-90 disabled:opacity-50"
           >
             <Heart
               className={cn(
-                'size-6',
-                post.likedByMe ? 'fill-red-500 text-red-500' : 'text-neutral-800',
+                'size-6 transition-colors',
+                post.likedByMe
+                  ? 'fill-red-500 text-red-500'
+                  : 'text-gray-700 group-hover:text-red-400',
               )}
             />
           </button>
-
-          <Link to={`/p/${post.id}`}>
-            <MessageCircle className="size-6 text-neutral-800" />
+          <Link to={`/p/${post.id}`} className="group">
+            <MessageCircle className="size-6 text-gray-700 transition-colors group-hover:text-violet-500" />
           </Link>
-
-          <button type="button" className="transition-transform active:scale-90">
-            <Send className="size-6 text-neutral-800" />
+          <button type="button" className="group">
+            <Send className="size-6 text-gray-700 transition-colors group-hover:text-blue-500" />
           </button>
         </div>
-
         <div className="ml-auto">
-          <Bookmark className="size-6 text-neutral-800" />
+          <Bookmark className="size-6 text-gray-700 transition-colors hover:text-yellow-500" />
         </div>
       </div>
 
-      {/* Like count */}
       {post.likeCount > 0 && (
-        <p className="text-sm font-semibold text-neutral-800">
+        <p className="text-sm font-semibold text-gray-900">
           {post.likeCount.toLocaleString()} ta like
         </p>
       )}
 
-      {/* Comment link */}
       {post.commentCount > 0 && (
-        <Link
-          to={`/p/${post.id}`}
-          className="mt-0.5 block text-sm text-neutral-400"
-        >
+        <Link to={`/p/${post.id}`} className="mt-0.5 block text-sm text-gray-400 hover:text-gray-600">
           Hamma {post.commentCount} ta izohni ko`rish
         </Link>
       )}
