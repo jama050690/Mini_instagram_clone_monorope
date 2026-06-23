@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { AuthedMedia, type Post } from '@/entities/post';
 import { UserAvatar } from '@/entities/user';
 import { useAuthStore } from '@/features/auth';
+import { CaptionText } from '@/features/hashtags';
 import { getApiErrorMessage } from '@/shared/api';
 import { Button, Textarea } from '@/shared/ui';
 import { useDeletePost, useUpdateCaption } from '../api/use-post';
@@ -153,10 +154,11 @@ export function PostCard({ post }: { post: Post }) {
             </div>
           </div>
         ) : post.caption ? (
-          <p className="whitespace-pre-line text-sm leading-relaxed text-gray-800">
-            <span className="font-semibold text-gray-900">{post.author.username}</span>{' '}
-            {post.caption}
-          </p>
+          <CaptionText
+            username={post.author.username}
+            caption={post.caption}
+            className="whitespace-pre-line text-sm leading-relaxed text-gray-800"
+          />
         ) : null}
       </div>
     </article>

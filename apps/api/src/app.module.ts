@@ -14,6 +14,7 @@ import { EngagementModule } from './modules/engagement/engagement.module';
 import { FollowModule } from './modules/follows/follow.module';
 import { FeedModule } from './modules/feed/feed.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { HashtagModule } from './modules/hashtags/hashtag.module';
 import { NotificationModule } from './modules/notifications/notification.module';
 import { PushModule } from './modules/push/push.module';
 
@@ -38,6 +39,7 @@ import { PushModule } from './modules/push/push.module';
     AdminModule,
     NotificationModule,
     PushModule,
+    HashtagModule,
   ],
 })
 export class AppModule {}

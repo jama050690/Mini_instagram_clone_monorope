@@ -9,6 +9,7 @@ import {
   type ImageExt,
   type VideoExt,
 } from '../media/media.service';
+import { HashtagService } from '../hashtags/hashtag.service';
 import { NotificationService } from '../notifications/notification.service';
 import { VisibilityService } from '../visibility/visibility.service';
 import { PostView, postIncludeFor, toPostView } from './post.serializer';
@@ -29,6 +30,7 @@ export class PostsService {
     private readonly media: MediaService,
     private readonly visibility: VisibilityService,
     private readonly notifications: NotificationService,
+    private readonly hashtagSvc: HashtagService,
   ) {}
 
   /**
@@ -91,8 +93,8 @@ export class PostsService {
       });
 
       const postView = await this.getById(post.id, author);
-      // Followerlarni async xabardor qilish (bloklamas)
       this.notifyFollowers(author.id, post.id).catch(() => {});
+      this.hashtagSvc.syncPostHashtags(post.id, caption).catch(() => {});
       return postView;
     } catch (err) {
       if (createdPostId) {
@@ -219,6 +221,7 @@ export class PostsService {
       where: { id: postId },
       data: { caption },
     });
+    this.hashtagSvc.syncPostHashtags(postId, caption).catch(() => {});
     return this.getById(postId, viewer);
   }
 

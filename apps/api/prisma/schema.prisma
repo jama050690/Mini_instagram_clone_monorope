@@ -99,8 +99,29 @@ model Post {
   comments      Comment[]
   likes         Like[]
   notifications Notification[]
+  hashtags      PostHashtag[]
 
   @@index([authorId, createdAt])
+}
+
+model Hashtag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+
+  posts PostHashtag[]
+
+  @@index([name])
+}
+
+model PostHashtag {
+  postId    String
+  hashtagId String
+  post      Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag   Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, hashtagId])
+  @@index([hashtagId])
 }
 
 model Media {

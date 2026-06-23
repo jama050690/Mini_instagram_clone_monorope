@@ -3,6 +3,7 @@ import { AdminPage } from '@/pages/admin';
 import { AuthCallbackPage } from '@/pages/auth-callback';
 import { CreatePostPage } from '@/pages/create-post';
 import { FollowListPage } from '@/pages/follow-list';
+import { HashtagPage } from '@/pages/hashtag';
 import { HomePage } from '@/pages/home';
 import { LoginPage } from '@/pages/login';
 import { OnboardingPage } from '@/pages/onboarding';
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
           { path: '/u/:username', element: <ProfilePage /> },
           { path: '/u/:username/followers', element: <FollowListPage type="followers" /> },
           { path: '/u/:username/following', element: <FollowListPage type="following" /> },
+          { path: '/hashtags/:tag', element: <HashtagPage /> },
           {
             // Faqat ADMIN — rol bo'yicha qo'shimcha guard.
             element: <RequireAdmin />,
