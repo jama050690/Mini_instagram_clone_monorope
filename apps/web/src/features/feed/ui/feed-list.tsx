@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import type { Post } from '@/entities/post';
 import { LikeBar } from '@/features/engagement';
 import { PostCard } from '@/features/post';
@@ -11,40 +11,23 @@ interface FeedListProps {
   onLoadMore: () => void;
 }
 
-/** Feed postlari ro'yxati — har post karta + like bar + izohlar havolasi. */
-export function FeedList({
-  posts,
-  hasNextPage,
-  isFetchingNextPage,
-  onLoadMore,
-}: FeedListProps) {
+export function FeedList({ posts, hasNextPage, isFetchingNextPage, onLoadMore }: FeedListProps) {
   return (
-    <div className="space-y-8">
+    <div>
       {posts.map((post) => (
-        <div key={post.id} className="space-y-3">
+        <div key={post.id} className="mb-6">
           <PostCard post={post} />
           <LikeBar post={post} />
-          <Link
-            to={`/p/${post.id}`}
-            className="block text-sm text-muted-foreground hover:underline"
-          >
-            {post.commentCount > 0
-              ? `Hamma ${post.commentCount} izohni ko\`rish`
-              : 'Izoh qoldirish'}
-          </Link>
         </div>
       ))}
-      {hasNextPage ? (
-        <div className="flex justify-center">
-          <Button
-            variant="ghost"
-            loading={isFetchingNextPage}
-            onClick={onLoadMore}
-          >
-            Ko`proq yuklash
+
+      {hasNextPage && (
+        <div className="flex justify-center py-4">
+          <Button variant="ghost" onClick={onLoadMore} disabled={isFetchingNextPage}>
+            {isFetchingNextPage ? <Loader2 className="size-5 animate-spin" /> : 'Ko`proq yuklash'}
           </Button>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

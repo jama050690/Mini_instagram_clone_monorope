@@ -2,15 +2,13 @@ import { Loader2 } from 'lucide-react';
 import { useFeed, FeedList } from '@/features/feed';
 import { SuggestedUsers } from '@/features/follow';
 
-/** Bosh sahifa — xronologik feed; bo'sh bo'lsa tavsiyalar + public postlar. */
 export function HomePage() {
-  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } =
-    useFeed();
+  const { data, isLoading, hasNextPage, isFetchingNextPage, fetchNextPage } = useFeed();
 
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <Loader2 className="size-6 animate-spin text-neutral-400" />
       </div>
     );
   }
@@ -19,29 +17,38 @@ export function HomePage() {
   const isFallback = data?.pages[0]?.isFallback ?? false;
 
   return (
-    <div className="mx-auto max-w-md space-y-6">
-      {isFallback ? (
-        <>
-          <p className="text-sm text-muted-foreground">
-            Hali hech kimga obuna bo`lmagansiz — quyida tavsiyalar va so`nggi
-            postlar.
-          </p>
-          <SuggestedUsers />
-        </>
-      ) : null}
+    <div className="flex gap-8">
+      {/* Feed */}
+      <div className="min-w-0 flex-1">
+        {posts.length === 0 ? (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <span className="text-5xl">📷</span>
+            <p className="text-lg font-semibold text-neutral-800">Postlar hali yo`q</p>
+            <p className="text-sm text-neutral-500">
+              Kimgadir obuna bo`ling va yangi postlarni ko`ring
+            </p>
+          </div>
+        ) : (
+          <>
+            {isFallback && (
+              <p className="mb-4 text-center text-sm text-neutral-400">
+                Tavsiya etilgan postlar
+              </p>
+            )}
+            <FeedList
+              posts={posts}
+              hasNextPage={hasNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+              onLoadMore={() => void fetchNextPage()}
+            />
+          </>
+        )}
+      </div>
 
-      {posts.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          Hali post yo`q.
-        </p>
-      ) : (
-        <FeedList
-          posts={posts}
-          hasNextPage={hasNextPage}
-          isFetchingNextPage={isFetchingNextPage}
-          onLoadMore={() => void fetchNextPage()}
-        />
-      )}
+      {/* Suggested sidebar — desktop only */}
+      <div className="hidden xl:block">
+        <SuggestedUsers />
+      </div>
     </div>
   );
 }
