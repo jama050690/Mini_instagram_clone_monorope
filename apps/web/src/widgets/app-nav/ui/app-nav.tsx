@@ -37,14 +37,10 @@ export function AppNav() {
           <button
             type="button"
             onClick={() => navigate('/')}
-            className="mr-4 shrink-0"
+            className="mr-4 flex size-9 shrink-0 items-center justify-center rounded-xl text-white shadow"
+            style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899, #f59e0b)' }}
           >
-            <span
-              className="bg-gradient-to-r from-violet-600 via-pink-500 to-blue-500 bg-clip-text text-2xl font-extrabold italic tracking-tight text-transparent"
-              style={{ fontFamily: 'Georgia, serif' }}
-            >
-              Instagram
-            </span>
+            <span className="text-lg">📷</span>
           </button>
 
           {/* Nav links */}
