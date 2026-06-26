@@ -61,6 +61,9 @@ export const envSchema = z.object({
   // Avatar URL uchun server base URL (avatar public URL quriladi)
   API_BASE_URL: z.string().url().default('http://localhost:3000'),
 
+  // ── Content Moderation (Google Cloud Vision SafeSearch) ──
+  GOOGLE_CLOUD_VISION_KEY: z.string().optional(),
+
   // ── Web Push (VAPID) ──
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

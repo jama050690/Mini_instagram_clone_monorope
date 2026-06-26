@@ -56,6 +56,13 @@ export class PostsService {
       file,
       ...this.media.validatePostMedia(file),
     }));
+
+    await Promise.all(
+      validated
+        .filter((v) => v.kind === 'IMAGE')
+        .map((v) => this.media.moderateImage(v.file.buffer)),
+    );
+
     const type = this.resolveType(validated);
 
     let createdPostId: string | undefined;

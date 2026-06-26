@@ -7,6 +7,7 @@ import { AppException } from '../../common/exceptions/app.exception';
 import { Env } from '../../config/env.validation';
 import { PrismaService } from '../../prisma/prisma.service';
 import { VisibilityService } from '../visibility/visibility.service';
+import { ContentModerationService } from './content-moderation.service';
 
 export interface ServableMedia {
   absPath: string;
@@ -44,6 +45,7 @@ export class MediaService {
     private readonly config: ConfigService<Env, true>,
     private readonly prisma: PrismaService,
     private readonly visibility: VisibilityService,
+    private readonly moderation: ContentModerationService,
   ) {
     const configured = this.config.get('UPLOAD_DIR', { infer: true });
     this.uploadDir = path.isAbsolute(configured)
@@ -99,11 +101,16 @@ export class MediaService {
     return ext;
   }
 
+  async moderateImage(buffer: Buffer): Promise<void> {
+    await this.moderation.checkImage(buffer);
+  }
+
   async storeAvatar(
     userId: string,
     file: Express.Multer.File,
   ): Promise<string> {
     const ext = this.validateImage(file, AVATAR_MAX_BYTES);
+    await this.moderation.checkImage(file.buffer);
     await this.deleteAvatar(userId);
 
     const dir = path.join(this.uploadDir, 'avatars');
