@@ -107,7 +107,7 @@ function NavItem({ to, icon: Icon, label, end, badge = 0 }: NavItemProps) {
       title={label}
       className={({ isActive }) =>
         cn(
-          'relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all',
+          'group relative flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-all',
           isActive
             ? 'bg-white/80 text-violet-600 shadow-sm'
             : 'text-gray-600 hover:bg-white/50 hover:text-gray-900',
@@ -122,7 +122,9 @@ function NavItem({ to, icon: Icon, label, end, badge = 0 }: NavItemProps) {
           </span>
         )}
       </span>
-      <span className="hidden lg:block">{label}</span>
+      <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm transition-all duration-200 group-hover:max-w-[120px]">
+        {label}
+      </span>
     </NavLink>
   );
 }

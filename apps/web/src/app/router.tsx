@@ -27,14 +27,12 @@ export const router = createBrowserRouter([
       { path: '/register', element: <RegisterPage /> },
     ],
   },
-  // Transient oqimlar — guard'siz (token/onboarding'ni o'zlari boshqaradi).
   { path: '/onboarding/username', element: <OnboardingPage /> },
   { path: '/auth/callback', element: <AuthCallbackPage /> },
   {
     element: <RequireAuth />,
     children: [
       {
-        // Autentifikatsiyalangan sahifalar umumiy navigatsiya layout'ida.
         element: <AppNav />,
         children: [
           { path: '/', element: <HomePage /> },
@@ -49,7 +47,6 @@ export const router = createBrowserRouter([
           { path: '/u/:username/following', element: <FollowListPage type="following" /> },
           { path: '/hashtags/:tag', element: <HashtagPage /> },
           {
-            // Faqat ADMIN — rol bo'yicha qo'shimcha guard.
             element: <RequireAdmin />,
             children: [{ path: '/admin', element: <AdminPage /> }],
           },
